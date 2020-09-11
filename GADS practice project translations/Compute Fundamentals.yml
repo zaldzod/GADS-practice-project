@@ -1,0 +1,100 @@
+LAB TITLE: GOOGLE CLOUD FUNDAMENTALS: GETTING STARTED WITH COMPUTE ENGINE
+
+TASK 1: sign in to the Google Cloud Platform Console
+
+/***For each lab, you get a new GCP project and set of resources for a 
+fixed time at no cost. 
+Make sure you sign into Qwiklabs using an incognito window 
+Note the lab's access time
+When ready, click 'START LAB'
+Note your lab credentials. You use them to sign in to Cloud Platform Console
+Click open Google Console
+Click Use another account and copy.paste credentials for lab into prompts
+Accept the terms and skip the recoovery resource page***/
+
+TASK 2: Create a virtual machine using the GCP Console
+
+1. To create an instance with name - my-vm-1 in region us-central1-c, standard machine-type and a Debian GNU Linux Stretch boot disk:
+
+2. get current version of Debian GNU Linux Stretch boot disk
+
+	gcloud compute images list | grep debian 
+
+3. create vm instance
+
+	gcloud compute instances create my-vm-1 --zone=us-central1-a --machine-type n1-standard-1 --image-project debian-cloud  --image debian-9-stretch-v20200910 --subnet default --tags allow-http
+
+4. To allow http, create a firewall rule allowing ingress on HTTP traffic
+
+	gcloud compute firewall-rules create allow-http-traffic --allow tcp:80 --target-tags allow-http --network=default --direction=INGRESS --source-ranges=0.0.0.0/0
+	
+
+
+TASK 3: Create a virtual machine using the gcloud command line
+
+1.	In GCP Console, on the top right toolbar, click the open Cloud Shell button. When prompted, click Continue
+
+2.  To display a list of zones in the Qwiklabs assigned region, type:
+       gcloud compute zones list | grep [asigned region]
+
+3. 	Choose a zone from the list. To set chosen zone as default, type:
+		gcloud config set compute/zone [chosen zone]
+		
+4.	The zone has now been set/ fixed to your chosen zone. Any 
+	compute resource created will accept that zone as default, unless it is overwritten using the --zone tag
+
+5.	Create a VM instance called my-vm-2 in the default zone.
+
+		gcloud compute instances create my-vm-2 --machine-type n1-standard-1 --image-project debian-cloud  --image debian-9-stretch-v20200910 --subnet default 
+
+6.	Vm takes about 2 minutes to spin up. To exit cloudshell:
+
+		exit
+
+
+
+TASK 4: Connect between VM instances
+
+1. To open a command prompt on the my-vm-2 instance, type:
+        gcloud compute ssh my-vm-2
+        
+2. Use the ping command to confirm that my-vm-2 can reach my-vm-1
+
+        ping -c 3 my-vm-1
+    
+3. Open a second Cloud shell tab, by clicking the + button
+
+4. Use the SSH command to open a command prompt on my-vm-1
+
+        gcloud compute ssh my-vm-1 --zone=us-central1-a
+        
+5. At the command prompt, install the web server:
+
+        sudo apt-get install nginx-light -y
+ 
+6. Use the nano text edito to add a custom message to home page of server:
+        
+        sudo nano /var/www/html/index.nginx-debian.html
+   
+7. Scroll using the arrow keys, to the line just below the h1 header. Replace YOUR_NAME with your name:
+        
+        Hi from YOUR_NAME
+ 
+8.  Press Ctrl+O and Enter to save your edit, then press Ctrl+X to exit. To confirm that the web server is serving a new page, type:
+
+        curl http://localhost/
+        
+9. The response should be the HTML page of the web server. To exit, type:
+        
+        exit
+        
+10. To confirm that my-vm-2 can reach the web server on my-vm-1, execute:
+
+        curl http://my-vm-1/
+
+11. To find the external IP address of my-vm-1, execute the command:
+
+        gcloud compute instances list
+
+12. Copy the External IP address for my-vm-1 and paste it into the address bar of a new browser tab. You will see your web server's home page, including your custom text.
+

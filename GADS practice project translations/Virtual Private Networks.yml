@@ -1,0 +1,166 @@
+LAB TITLE: VIRTUAL PRIVATE NETWORKS (VPN)
+
+Setup
+
+/***For each lab, you get a new GCP project and set of resources for a 
+fixed time at no cost. 
+Make sure you sign into Qwiklabs using an incognito window
+Note the lab's access time
+When ready, click 'START LAB'
+Note your lab credentials. You use them to sign in to Cloud Platform Console
+Click open Google Console
+Click Use another account and copy.paste credentials for lab into prompts
+Accept the terms and skip the recoovery resource page***/
+
+Task 1: Explore the networks and instances
+
+To verify that vpn-network-1 and vpn-network-2 have been created with subnets in separate regions:
+
+	gcloud compute networks list
+
+To view the subnets:
+
+	gcloud compute networks subnets list 
+	
+Explore the firewall rules: The network-1-allow-ssh and network-1-allow-icmp firewall rules have been created for vpn-network-1. 
+
+The network-2-allow-ssh and network-2-allow-icmp have also been created for vpn-network-2. To verify both, execute:
+
+	gcloud compute firewall-rules 
+	
+Explore connectivity: To obtain the internal and external IP addresses of the VM instances. type:
+
+	gcloud compute instances list
+	
+Note the extenal and internal IP address of the server-2 instance. 
+
+To SSH into server-1 VM instance, type:
+	
+	gcloud compute ssh server-1 --zone=us-central1-b
+	
+To test connectivity to server-2's extenal IP address, run the command:
+	
+	ping -c 3 <Enter server-2's external IP address here>
+
+To test connectivity to server-2's internal IP address, run the command:
+		
+	ping -c 3 <Enter server-2's internal IP address here>
+	
+	A 100% packet loss is expected, because there is no VPN connectivity yet
+
+Exit the SSH terminal. Run the command:
+	
+	exit
+	
+Note the external and internal IP addresses for server-1. For server-2, SSH:
+
+	gcloud compute ssh server-2 --zone=europe-west1-b
+	
+To test connectivity to server-1's external IP address, run the command:
+
+	ping -c 3 <Enter server-1's external IP address here>
+	
+To test connectivity to server-1's internal IP address, run the command:
+
+	ping -c 3 <Enter server-1's internal IP address here>
+
+Exit the SSH terminal
+
+
+
+
+Task 2: Create the VPN gateways and tunnels
+
+Reserve two static IP addresses. One for each VPN gateway.
+
+	gcloud compute addresses create vpn-1-static-ip --region us-central1 
+	
+	gcloud compute addresses create vpn-2-static-ip --region europe-west1
+	
+To create VPN connection. First we set up a VPN connection called VPN 1.
+
+	gcloud compute target-vpn-gateways create vpn-1 --region us-central1 --network vpn-network-1
+
+	gcloud compute forwarding-rules create vpn-1-rule-esp --region us-central1 --address 35.223.131.59 --ip-protocol ESP --target-vpn-gateway vpn-1
+
+	gcloud compute  forwarding-rules create vpn-1-rule-udp500 --region us-central1 --address 35.223.131.59 --ip-protocol UDP --ports 500 --target-vpn-gateway vpn-1
+
+	gcloud compute forwarding-rules create vpn-1-rule-udp4500 --region us-central1 --address 35.223.131.59 --ip-protocol UDP --ports 4500 --target-vpn-gateway vpn-1
+
+	gcloud compute vpn-tunnels create tunnel1to2 --region us-central1 --peer-address 146.148.119.99 --shared-secret gcprocks --ike-version 2 --local-traffic-selector 0.0.0.0/0 --target-vpn-gateway vpn-1
+
+	gcloud compute routes create tunnel1to2-route-1 --network vpn-network-1 --next-hop-vpn-tunnel tunnel1to2 --next-hop-vpn-tunnel-region us-central1 --destination-range 10.1.3.0/24
+
+
+Then set up a VPN connection for vpn-network-2, called VPN-2:
+	
+	gcloud compute target-vpn-gateways create vpn-2 --region europe-west1 --network vpn-network-2
+
+	gcloud compute forwarding-rules create vpn-2-rule-esp --region europe-west1 --address 146.148.119.99 --ip-protocol ESP --target-vpn-gateway vpn-2
+
+	gcloud compute forwarding-rules create vpn-2-rule-udp500 --region europe-west1 --address 146.148.119.99 --ip-protocol UDP --ports 500 --target-vpn-gateway vpn-2
+
+	gcloud compute forwarding-rules create vpn-2-rule-udp4500 --region europe-west1 --address 146.148.119.99 --ip-protocol UDP --ports 4500 --target-vpn-gateway vpn-2
+
+	gcloud compute vpn-tunnels create tunnel2to1 --region europe-west1 --peer-address 35.223.131.59 --shared-secret gcprocks --ike-version 2 --local-traffic-selector 0.0.0.0/0 --target-vpn-gateway vpn-2
+
+	gcloud compute routes create tunnel2to1-route-1 --network vpn-network-2 --next-hop-vpn-tunnel tunnel2to1 --next-hop-vpn-tunnel-region europe-west1 --destination-range 10.5.4.0/24 
+
+	
+Task 3: Verify VPN connectivity
+
+To test connectivity from server-1 to server-2. SSH into server-1:
+
+	gcloud compute ssh server-1 --zone=us-central1-b
+
+Ping server-2's IP address by running the following command:
+
+	ping -c 3 <Enter server-2's external IP address here>
+	
+Exit the terminal:
+
+	exit
+
+To test connectivity from server-2 to server-1. SSH into server-2:
+	
+	gcloud compute ssh server-2 --zone=europe-west1-b
+
+Ping server-1's IP address by running the following command:
+
+	ping -c 3 <Enter server-1's external IP address here>
+
+Exit the terminal:
+
+	exit
+	
+Remove the external IP addresses.
+
+In order to modify the network interface of server-1, the instance has to be stopped. To stop the instance, run the following command:
+
+	gcloud compute instances stop server-1
+	
+To release the external IP address of server-1 so that it is returned to the general IP pool for other Compute Engine users:
+
+	gcloud compute addresses delete vpn-1-static-ip
+	
+Restart server-1 VM instance:
+
+	gcloud compute instances start server-1
+
+To test connectivity from server-2 to server-1. SSH into server-2:
+
+	gcloud compute ssh server-2 --zone=europe-west1-b
+	
+Ping server-1's IP address by running the following command:
+
+	ping -c 3 <Enter server-1's external IP address here>
+	
+The ping should work. 
+	
+
+	
+
+
+
+
+
